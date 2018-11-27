@@ -9,7 +9,7 @@ DEPS += emqx emqx_retainer emqx_recon emqx_management \
         emqx_auth_jwt emqx_statsd emqx_delayed_publish emqx_lua_hook
 
 # emqx and plugins
-dep_emqx            = git https://github.com/emqx/emqx emqx30
+dep_emqx            = git https://github.com/emqx/emqx edge
 dep_emqx_retainer   = git https://github.com/emqx/emqx-retainer emqx30
 dep_emqx_recon      = git https://github.com/emqx/emqx-recon emqx30
 dep_emqx_management = git https://github.com/emqx/emqx-management emqx30
