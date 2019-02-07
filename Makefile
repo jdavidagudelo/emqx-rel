@@ -52,6 +52,7 @@ $(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = git-emqx https:/
 dep_emqx_auth_http = git https://github.com/jdavidagudelo/emqx-auth-http emqx30
 dep_emqx = git-emqx https://github.com/emqx/emqx release-3.1
 dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
+dep_emqx_web_hook = git https://github.com/jdavidagudelo/emqx-web-hook master
 
 #$(error dep_emqx_auth_http is $(dep_emqx_auth_http))
 
