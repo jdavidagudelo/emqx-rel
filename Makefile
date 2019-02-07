@@ -47,6 +47,14 @@ DEPS += $(foreach dep,$(MAIN_APPS),$(call app_name,$(dep)))
 # for erlang.mk
 $(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = git-emqx https://github.com/emqx/$(dep) $(call app_vsn,$(dep))))
 
+#
+
+dep_emqx_auth_http = git https://github.com/jdavidagudelo/emqx-auth-http emqx30
+dep_emqx = git-emqx https://github.com/emqx/emqx release-3.1
+dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
+
+#$(error dep_emqx_auth_http is $(dep_emqx_auth_http))
+
 # Add this dependency before including erlang.mk
 all:: OTP_21_OR_NEWER
 
