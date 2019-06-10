@@ -10,7 +10,6 @@ PROJECT_DESCRIPTION = Release Project for EMQ X Broker
 # Default release profiles
 RELX_OUTPUT_DIR ?= _rel
 REL_PROFILE ?= dev
-CLONE_METHOD ?= git-emqx
 
 # Deploy to edge or cloud
 DEPLOY ?= cloud
@@ -46,13 +45,13 @@ DEPS += $(foreach dep,$(MAIN_APPS),$(call app_name,$(dep)))
 # Inject variables like
 # dep_app_name = git-emqx https://github.com/emqx/app-name branch-or-tag
 # for erlang.mk
+$(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = git-emqx https://github.com/emqx/$(dep) $(call app_vsn,$(dep))))
 
-dep_emqx_auth_http = git https://github.com/jdavidagudelo/emqx-auth-http emqx30
-dep_emqx = git-emqx https://github.com/emqx/emqx release-3.1
-dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
-dep_emqx_web_hook = git https://github.com/jdavidagudelo/emqx-web-hook master
-
-$(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = $(CLONE_METHOD) https://github.com/emqx/$(dep) $(call app_vsn,$(dep))))
+#
+dep_emqx_auth_http = git https://github.com/jdavidagudelo/emqx-auth-http master
+#dep_emqx = git-emqx https://github.com/emqx/emqx master
+#dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
+#dep_emqx_web_hook = git https://github.com/jdavidagudelo/emqx-web-hook master
 
 # Add this dependency before including erlang.mk
 all:: OTP_21_OR_NEWER
