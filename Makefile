@@ -1,112 +1,98 @@
-PROJECT = emqx-rel
-PROJECT_DESCRIPTION = Release Project for EMQ X Broker
+## shallow clone for speed
 
-# All emqx app names. Repo name, not Erlang app name
-# By default, app name is the same as repo name with dash replaced by underscore.
-# Otherwise define the dependency in regular erlang.mk style:
-## DEPS += emqx
-## dep_emqx = git https://github.com/emqx/emqx.git emqx30
+REBAR_GIT_CLONE_OPTIONS += --depth 1
+export REBAR_GIT_CLONE_OPTIONS
 
-# Default release profiles
-RELX_OUTPUT_DIR ?= _rel
-REL_PROFILE ?= dev
-CLONE_METHOD ?= git-emqx
+TAG = $(shell git tag -l --points-at HEAD)
 
-# Deploy to edge or cloud
-DEPLOY ?= cloud
+CUR_BRANCH := $(shell git branch | grep -e "^*" | cut -d' ' -f 2)
 
-MAIN_APPS = emqx emqx-retainer emqx-recon emqx-management \
-            emqx-auth-clientid emqx-auth-username emqx-auth-http \
-            emqx-auth-mysql emqx-reloader \
-            emqx-sn emqx-coap emqx-stomp emqx-web-hook \
-            emqx-auth-jwt emqx-delayed-publish
-
-CLOUD_APPS = emqx-lwm2m emqx-dashboard emqx-auth-ldap emqx-auth-pgsql emqx-auth-redis emqx-auth-mongo emqx-plugin-template emqx-statsd emqx-lua-hook
-
-ifeq (cloud,$(DEPLOY))
-  MAIN_APPS += $(CLOUD_APPS)
+ifeq ($(EMQX_DEPS_DEFAULT_VSN),)
+	ifneq ($(TAG),)
+		EMQX_DEPS_DEFAULT_VSN ?= $(lastword 1, $(TAG))
+	else
+		EMQX_DEPS_DEFAULT_VSN ?= $(CUR_BRANCH)
+	endif
 endif
 
-# Default version for all MAIN_APPS
-## This is either a tag or branch name for ALL dependencies
-EMQX_DEPS_DEFAULT_VSN ?= release-3.1
+REBAR = $(CURDIR)/rebar3
 
-dash = -
-uscore = _
+REBAR_URL = https://s3.amazonaws.com/rebar3/rebar3
 
-# Make Erlang app name from repo name.
-# Replace dashes with underscores
-app_name = $(subst $(dash),$(uscore),$(1))
+export EMQX_DEPS_DEFAULT_VSN
 
-# set emqx_app_name_vsn = x.y.z to override default version
-app_vsn = $(if $($(call app_name,$(1))_vsn),$($(call app_name,$(1))_vsn),$(EMQX_DEPS_DEFAULT_VSN))
+PROFILE ?= emqx
+PROFILES := emqx emqx_pkg emqx_edge emqx_edge_pkg
 
-DEPS += $(foreach dep,$(MAIN_APPS),$(call app_name,$(dep)))
+CT_APPS := emqx_auth_jwt emqx_auth_mysql emqx_auth_username \
+		emqx_delayed_publish emqx_management emqx_recon emqx_rule_enginex \
+		emqx_stomp emqx_auth_clientid  emqx_auth_ldap   emqx_auth_pgsql \
+		emqx_coap emqx_lua_hook emqx_passwd emqx_reloader emqx_sn \
+		emqx_web_hook emqx_auth_http emqx_auth_mongo emqx_auth_redis \
+		emqx_dashboard emqx_lwm2m emqx_psk_file emqx_retainer emqx_statsd
 
-# Inject variables like
-# dep_app_name = git-emqx https://github.com/emqx/app-name branch-or-tag
-# for erlang.mk
-$(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = $(CLONE_METHOD) https://github.com/emqx/$(dep) $(call app_vsn,$(dep))))
+.PHONY: default
+default: $(REBAR) $(PROFILE)
 
-#
-dep_emqx = git https://github.com/jdavidagudelo/emqx master
-#dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
-#dep_emqx_web_hook = git https://github.com/jdavidagudelo/emqx-web-hook master
+.PHONY: all
+all: $(REBAR) $(PROFILES)
 
-# Add this dependency before including erlang.mk
-all:: OTP_21_OR_NEWER
+.PHONY: distclean
+distclean:
+	@rm -rf _build
+	@rm -f data/app.*.config data/vm.*.args rebar.lock
+	@rm -rf _checkouts
 
-# COVER = true
+.PHONY: $(PROFILES)
+$(PROFILES:%=%): $(REBAR)
+ifneq ($(OS),Windows_NT)
+	ln -snf _build/$(@)/lib ./_checkouts
+endif
+	$(REBAR) as $(@) release
 
-$(shell [ -f erlang.mk ] || curl -s -o erlang.mk https://raw.githubusercontent.com/emqx/erlmk/master/erlang.mk)
+.PHONY: $(PROFILES:%=build-%)
+$(PROFILES:%=build-%): $(REBAR)
+	$(REBAR) as $(@:build-%=%) compile
 
-include erlang.mk
 
-# Fail fast in case older than OTP 21
-.PHONY: OTP_21_OR_NEWER
-OTP_21_OR_NEWER:
-	@erl -noshell -eval "R = list_to_integer(erlang:system_info(otp_release)), halt(if R >= 21 -> 0; true -> 1 end)"
+.PHONY: deps-all
+deps-all: $(REBAR) $(PROFILES:%=deps-%)
 
-# Compile options
-ERLC_OPTS += +warn_export_all +warn_missing_spec +warn_untyped_record
+.PHONY: $(PROFILES:%=deps-%)
+$(PROFILES:%=deps-%): $(REBAR)
+	$(REBAR) as $(@:deps-%=%) get-deps
 
-plugins:
-	@rm -rf rel
-	@mkdir -p rel/conf/plugins/ rel/schema/
-	@for conf in $(DEPS_DIR)/*/etc/*.conf* ; do \
-		if [ "emqx.conf" = "$${conf##*/}" ] ; then \
-			cp $${conf} rel/conf/ ; \
-		elif [ "acl.conf" = "$${conf##*/}" ] ; then \
-			cp $${conf} rel/conf/ ; \
-		elif [ "ssl_dist.conf" = "$${conf##*/}" ] ; then \
-			cp $${conf} rel/conf/ ; \
-		else \
-			cp $${conf} rel/conf/plugins ; \
-		fi ; \
-	done
-	@for schema in $(DEPS_DIR)/*/priv/*.schema ; do \
-		cp $${schema} rel/schema/ ; \
-	done
+.PHONY: run $(PROFILES:%=run-%)
+run: run-$(PROFILE)
+$(PROFILES:%=run-%): $(REBAR)
+ifneq ($(OS),Windows_NT)
+	@ln -snf _build/$(@:run-%=%)/lib ./_checkouts
+endif
+	$(REBAR) as $(@:run-%=%) run
 
-vm_args:
-	@if [ $(DEPLOY) = "cloud" ] ; then \
-		cp deps/emqx/etc/vm.args rel/conf/vm.args ; \
-	else \
-		cp deps/emqx/etc/vm.args.$(DEPLOY) rel/conf/vm.args ; \
-	fi ;
+.PHONY: clean $(PROFILES:%=clean-%)
+clean: $(PROFILES:%=clean-%)
+$(PROFILES:%=clean-%): $(REBAR)
+	@rm -rf _build/$(@:clean-%=%)
+	@rm -rf _build/$(@:clean-%=%)+test
 
-relx_conf:
-	@if [ $(DEPLOY) != "cloud" ] ; then \
-		cp relx.config.$(DEPLOY) relx.config ; \
-	fi ;
+.PHONY: $(PROFILES:%=checkout-%)
+$(PROFILES:%=checkout-%): $(REBAR) build-$(PROFILE)
+	ln -s -f _build/$(@:checkout-%=%)/lib ./_checkouts
 
-loaded_plugins:
-	@if [ $(DEPLOY) != "cloud" ] ; then \
-		cp data/loaded_plugins.$(DEPLOY) data/loaded_plugins ; \
-	fi ;
+# Checkout current profile
+.PHONY: checkout
+checkout:
+	@ln -s -f _build/$(PROFILE)/lib ./_checkouts
 
-app:: plugins vm_args relx_conf loaded_plugins vars-ln
+# Run ct for an app in current profile
+.PHONY: $(REBAR) $(CT_APPS:%=ct-%)
+ct: $(CT_APPS:%=ct-%)
+$(CT_APPS:%=ct-%): checkout-$(PROFILE)
+	$(REBAR) as $(PROFILE) ct --verbose --dir _checkouts/$(@:ct-%=%)/test --verbosity 50
 
-vars-ln:
-	ln -s -f vars-$(REL_PROFILE).config vars.config
-
+$(REBAR):
+ifneq ($(wildcard rebar3),rebar3)
+	@curl -Lo rebar3 $(REBAR_URL) || wget $(REBAR_URL)
+endif
+	@chmod a+x rebar3

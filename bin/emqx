@@ -43,6 +43,7 @@ CUTTLEFISH_COMMAND_PREFIX="$ERTS_PATH/escript $RUNNER_ROOT_DIR/bin/cuttlefish -s
 SED_REPLACE="sed -i "
 case $(sed --help 2>&1) in
     *GNU*) SED_REPLACE="sed -i ";;
+    *BusyBox*) SED_REPLACE="sed -i ";;
     *) SED_REPLACE="sed -i ''";;
 esac
 
@@ -108,6 +109,10 @@ relx_start_command() {
 
 # Function to generate app.config and vm.args
 generate_config() {
+    ## Delete the *.siz files first or it cann't start after
+    ## changing the config 'log.rotation.size'
+    rm -rf "${RUNNER_LOG_DIR}"/*.siz
+
     if [ "$CUTTLEFISH" != "yes" ]; then
         # Note: we have added a parameter '-vm_args' to this. It
         # appears redundant but it is not! the erlang vm allows us to
