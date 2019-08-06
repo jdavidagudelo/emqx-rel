@@ -54,7 +54,6 @@ endif
 $(PROFILES:%=build-%): $(REBAR)
 	$(REBAR) as $(@:build-%=%) compile
 
-
 .PHONY: deps-all
 deps-all: $(REBAR) $(PROFILES:%=deps-%)
 

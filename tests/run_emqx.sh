@@ -28,7 +28,7 @@ while IFS='' read line || [[ -n $line ]]; do
         sed -i "/auth.pgsql.server/c auth.pgsql.server = pgsql_server:5432" ./deps/$line/etc/emqx_auth_pgsql.conf 
     fi
     if [ $line == "emqx_auth_ldap" ];then
-        sed -i "/auth.ldap.servers/c auth.ldap.servers = ldap_server:3306" ./deps/$line/etc/emqx_auth_ldap.conf
+        sed -i "/auth.ldap.servers/c auth.ldap.servers = ldap_server" ./deps/$line/etc/emqx_auth_ldap.conf 
     fi
     mkdir -p ./deps/$line/_build/test/lib
     if [ $line != "emqx" ];then
