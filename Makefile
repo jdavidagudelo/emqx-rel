@@ -49,8 +49,7 @@ DEPS += $(foreach dep,$(MAIN_APPS),$(call app_name,$(dep)))
 $(foreach dep,$(MAIN_APPS),$(eval dep_$(call app_name,$(dep)) = $(CLONE_METHOD) https://github.com/emqx/$(dep) $(call app_vsn,$(dep))))
 
 #
-dep_emqx_auth_http = git https://github.com/jdavidagudelo/emqx-auth-http master
-#dep_emqx = git-emqx https://github.com/emqx/emqx master
+dep_emqx = git https://github.com/jdavidagudelo/emqx master
 #dep_emqx_lua_hook = git https://github.com/jdavidagudelo/emqx-lua-hook master
 #dep_emqx_web_hook = git https://github.com/jdavidagudelo/emqx-web-hook master
 
